@@ -1,0 +1,27 @@
+# Vivado project is regenerated from scripts/create_project.tcl
+build/
+
+# Vivado generated directories (in case a project is created elsewhere in the repo)
+*.cache/
+*.gen/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.srcs/
+*.xpr
+.Xil/
+
+# Vivado logs and journals
+*.jou
+*.log
+*.str
+vivado_pid*.zip
+webtalk*
+usage_statistics_webtalk.*
+
+# Simulator outputs
+xsim.dir/
+*.wdb
+*.pb
+*.vcd
