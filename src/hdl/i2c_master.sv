@@ -82,6 +82,8 @@ module i2c_master(
         n_done = done;
         case (state) 
             IDLE: begin
+                n_scl_drive_h = 1;
+                n_sda_drive_h = 1;
                 n_ready = 1;
                 if ((i_cmd == START_CMD) && i_wr_cmd) begin
                     n_state = START1;
@@ -112,9 +114,9 @@ module i2c_master(
             end
 
             HOLD: begin
-                n_ready = 1;
                 n_scl_drive_h = 0;
                 n_sda_drive_h = 0;
+                n_ready = 1;
                 if (((i_cmd == WR_CMD) || (i_cmd == RD_CMD)) && i_wr_cmd) begin
                     n_state = DATA1;
                     n_cmd_reg = i_cmd;
@@ -129,12 +131,10 @@ module i2c_master(
                     n_state = RESTART;
                     n_cmd_reg = i_cmd;
                 end
-                
             end
 
             DATA1: begin 
                 n_ready = 0;
-                n_scl_drive_h = 0;
                 if (cmd_reg == WR_CMD && d_count < 8) begin
                     n_sda_drive_h = din_reg[MSB];
                     n_din_reg = din_reg << 1;
