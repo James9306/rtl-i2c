@@ -225,6 +225,27 @@ module i2c_master(
                 end
             end
 
+            STOP1: begin
+                n_sda_drive_h = 1;
+                if (count < ((i_clk_dvsr >> 1) - 1)) begin
+                    n_count = count + 1;
+                end
+                else begin
+                    n_state = STOP2;
+                    n_count = 0;
+                end
+            end
+
+            STOP2: begin 
+                n_scl_drive_h = 1;
+                if (count < ((i_clk_dvsr >> 1) - 1)) begin
+                    n_count = count + 1;
+                end
+                else begin
+                    n_state = IDLE;
+                    n_count = 0;
+                end
+            end
 
         endcase
     end 
