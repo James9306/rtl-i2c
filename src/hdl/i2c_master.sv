@@ -70,8 +70,8 @@ module i2c_master(
 
     always_comb begin
         n_state = state;
-        n_scl_drive_h = scl_drive_h;
-        n_sda_drive_h = sda_drive_h;
+        n_scl_drive_h = 1;
+        n_sda_drive_h = 1;
         n_count = count;
         n_ready = ready;
         n_cmd_reg = cmd_reg;
@@ -82,8 +82,6 @@ module i2c_master(
         n_done = done;
         case (state) 
             IDLE: begin
-                n_scl_drive_h = 1;
-                n_sda_drive_h = 1;
                 n_ready = 1;
                 if ((i_cmd == START_CMD) && i_wr_cmd) begin
                     n_state = START1;
@@ -103,6 +101,7 @@ module i2c_master(
             end 
 
             START2: begin
+                n_sda_drive_h = 0;
                 n_scl_drive_h = 0;
                 if (count < (i_clk_dvsr - 1)) begin
                     n_count = count + 1;
@@ -134,17 +133,15 @@ module i2c_master(
             end
 
             DATA1: begin 
+                n_scl_drive_h = 0;
                 n_ready = 0;
-                if (cmd_reg == WR_CMD && d_count < 8) begin
+                if (cmd_reg == WR_CMD && d_count < 8) begin // Master write high or low 
                     n_sda_drive_h = din_reg[MSB];
-                    n_din_reg = din_reg << 1;
+                    n_din_reg = din_reg << 1; 
                 end
-                else if (cmd_reg == WR_CMD) begin
-                    n_sda_drive_h = 0; 
-                end
-                else if (cmd_reg == RD_CMD && d_count >= 8) begin
-                    n_sda_drive_h = din_reg[LSB]; // send ack
-                end
+                else if (cmd_reg == RD_CMD && d_count >= 8) begin// Master write ack or nack
+                    n_sda_drive_h = din_reg[LSB]; 
+                end 
 
                 if (count < (i_clk_dvsr >> 2) - 1) begin
                     n_count = count + 1;
@@ -156,7 +153,7 @@ module i2c_master(
             end 
 
             DATA2: begin
-                n_scl_drive_h = 1;
+                n_sda_drive_h = sda_drive_h;
                 if (count < (i_clk_dvsr >> 2) - 1) begin
                     n_count = count + 1;
                 end
@@ -167,9 +164,9 @@ module i2c_master(
             end
 
             DATA3: begin
-                if (cmd_reg == RD_CMD && !count) begin
+                n_sda_drive_h = sda_drive_h;
+                if (cmd_reg == RD_CMD && !count)
                     n_rx_reg = {rx_reg[6:0], sda};
-                end
                 else if (cmd_reg == WR_CMD && d_count >= 8) begin
                     n_ack = sda;
                 end
@@ -184,6 +181,7 @@ module i2c_master(
             end
 
             DATA4: begin
+                n_sda_drive_h = sda_drive_h;
                 n_scl_drive_h = 0;
                 if (count < (i_clk_dvsr >> 2) - 1) begin
                     n_count = count + 1;
@@ -201,6 +199,7 @@ module i2c_master(
 
             DATA_END: begin
                 n_sda_drive_h = 0;
+                n_scl_drive_h = 0;
                 n_done = 1;
                 n_d_count = 0;
                 if (count < (i_clk_dvsr >> 2) - 1) begin
@@ -214,8 +213,6 @@ module i2c_master(
             end
 
             RESTART: begin
-                n_scl_drive_h = 1;
-                n_sda_drive_h = 1;
                 if (count < ((i_clk_dvsr >> 1) - 1)) begin
                     n_count = count + 1;
                 end
@@ -226,7 +223,7 @@ module i2c_master(
             end
 
             STOP1: begin
-                n_sda_drive_h = 1;
+                n_scl_drive_h = 0;
                 if (count < ((i_clk_dvsr >> 1) - 1)) begin
                     n_count = count + 1;
                 end
@@ -237,7 +234,6 @@ module i2c_master(
             end
 
             STOP2: begin 
-                n_scl_drive_h = 1;
                 if (count < ((i_clk_dvsr >> 1) - 1)) begin
                     n_count = count + 1;
                 end
