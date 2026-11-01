@@ -2,7 +2,7 @@ module i2c_master(
     input  logic        i_clk,
     input  logic        i_rst_n, // active low switch 
     input  logic [7:0]  din,
-    input  logic [31:0] i_clk_dvsr,
+    input  logic [31:0] qtr_dvsr,
     input  logic [2:0]  i_cmd,
     input  logic        i_wr_cmd,
     inout  tri          sda,
@@ -38,6 +38,7 @@ module i2c_master(
     logic [7:0] dout_reg, n_dout_reg;
     logic ack, n_ack;
     logic done, n_done;
+    logic [31:0] half_dvsr;
 
     always_ff @ (posedge i_clk) begin
         if (!i_rst_n) begin 
@@ -80,6 +81,7 @@ module i2c_master(
         n_d_count = d_count;
         n_ack = ack;
         n_done = done;
+        n_count = count + 1;
         case (state) 
             IDLE: begin
                 n_ready = 1;
@@ -93,21 +95,16 @@ module i2c_master(
             START1: begin
                 n_sda_drive_h = 0; 
                 n_ready = 0;
-                if (count < ((i_clk_dvsr >> 1) - 1)) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= half_dvsr - 1) begin
                     n_state = START2;
+                    n_count = 0;
                 end
             end 
 
             START2: begin
                 n_sda_drive_h = 0;
                 n_scl_drive_h = 0;
-                if (count < (i_clk_dvsr - 1)) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= half_dvsr - 1) begin
                     n_state = HOLD;
                     n_count = 0;
                 end
@@ -146,10 +143,7 @@ module i2c_master(
                     n_sda_drive_h = din_reg[LSB]; 
                 end 
 
-                if (count < (i_clk_dvsr >> 2) - 1) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= qtr_dvsr - 1) begin
                     n_state = DATA2;
                     n_count = 0;
                 end
@@ -157,10 +151,7 @@ module i2c_master(
 
             DATA2: begin
                 n_sda_drive_h = sda_drive_h;
-                if (count < (i_clk_dvsr >> 2) - 1) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= qtr_dvsr - 1) begin
                     n_state = DATA3;
                     n_count = 0;
                 end
@@ -174,10 +165,7 @@ module i2c_master(
                     n_ack = sda;
                 end
 
-                if (count < (i_clk_dvsr >> 2) - 1) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= qtr_dvsr - 1) begin
                     n_state = DATA4;
                     n_count = 0;
                 end
@@ -186,29 +174,26 @@ module i2c_master(
             DATA4: begin
                 n_sda_drive_h = sda_drive_h;
                 n_scl_drive_h = 0;
-                if (count < (i_clk_dvsr >> 2) - 1) begin
-                    n_count = count + 1;
+                if (count >= qtr_dvsr - 1) begin
+                    if (d_count < 8) begin
+                        n_state = DATA1;
+                        n_d_count = d_count + 1;
+                        n_count = 0;
+                    end
+                    else begin 
+                        n_state = DATA_END;
+                        n_d_count = 0;
+                        n_count = 0;
+                    end
                 end
-                else if (d_count < 8) begin
-                    n_state = DATA1;
-                    n_d_count = d_count + 1;
-                    n_count = 0;
-                end
-                else begin
-                    n_state = DATA_END;
-                    n_count = 0;
-                end
+                
             end
 
             DATA_END: begin
                 n_sda_drive_h = 0;
                 n_scl_drive_h = 0;
                 n_done = 1;
-                n_d_count = 0;
-                if (count < (i_clk_dvsr >> 2) - 1) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= qtr_dvsr - 1) begin
                     n_state = HOLD;
                     n_count = 0;
                     n_done = 0;
@@ -216,10 +201,7 @@ module i2c_master(
             end
 
             RESTART: begin         
-                if (count < ((i_clk_dvsr >> 1) - 1)) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= half_dvsr - 1) begin
                     n_state = START1;
                     n_count = 0;
                 end
@@ -227,20 +209,14 @@ module i2c_master(
 
             STOP1: begin
                 n_sda_drive_h = 0;
-                if (count < ((i_clk_dvsr >> 1) - 1)) begin
-                    n_count = count + 1;
-                end
-                else begin
-                    n_state = STOP2;
+                if (count >= half_dvsr - 1) begin
+                    n_state = START2;
                     n_count = 0;
                 end
             end
 
             STOP2: begin 
-                if (count < ((i_clk_dvsr >> 1) - 1)) begin
-                    n_count = count + 1;
-                end
-                else begin
+                if (count >= half_dvsr - 1) begin
                     n_state = IDLE;
                     n_count = 0;
                 end
@@ -249,6 +225,7 @@ module i2c_master(
         endcase
     end 
 
+    assign half_dvsr = qtr_dvsr << 1;
     assign dout = dout_reg;
     assign o_ack = ack;
     assign o_ready = ready;
