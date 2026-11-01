@@ -86,6 +86,7 @@ module i2c_master(
                 if ((i_cmd == START_CMD) && i_wr_cmd) begin
                     n_state = START1;
                     n_cmd_reg = i_cmd;
+                    n_count = 0;
                 end
             end
 
@@ -119,22 +120,24 @@ module i2c_master(
                 if (((i_cmd == WR_CMD) || (i_cmd == RD_CMD)) && i_wr_cmd) begin
                     n_state = DATA1;
                     n_cmd_reg = i_cmd;
+                    n_ready = 0;
                     n_d_count = 0;
                     n_din_reg = din;
                 end
                 else if ((i_cmd == STOP_CMD) && i_wr_cmd) begin
                     n_state = STOP1;
                     n_cmd_reg = i_cmd;
+                    n_ready = 0;
                 end
                 else if ((i_cmd == RESTART_CMD) && i_wr_cmd) begin
                     n_state = RESTART;
                     n_cmd_reg = i_cmd;
+                    n_ready = 0;
                 end
             end
 
             DATA1: begin 
                 n_scl_drive_h = 0;
-                n_ready = 0;
                 if (cmd_reg == WR_CMD && d_count < 8) begin // Master write high or low 
                     n_sda_drive_h = din_reg[MSB];
                     n_din_reg = din_reg << 1; 
