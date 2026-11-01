@@ -35,7 +35,7 @@ module i2c_master(
     logic [3:0] d_count, n_d_count;
     logic [2:0] cmd_reg, n_cmd_reg;
     logic [7:0] din_reg, n_din_reg;
-    logic [7:0] rx_reg, n_rx_reg;
+    logic [7:0] dout_reg, n_dout_reg;
     logic ack, n_ack;
     logic done, n_done;
 
@@ -49,7 +49,7 @@ module i2c_master(
             cmd_reg <= 0;
             d_count <= 0;
             din_reg <= 0;
-            rx_reg <= 0;
+            dout_reg <= 0;
             ack <= 0;
             done <= 0;
         end 
@@ -62,7 +62,7 @@ module i2c_master(
             d_count <= n_d_count;
             cmd_reg <= n_cmd_reg;
             din_reg <= n_din_reg;
-            rx_reg <= n_rx_reg;
+            dout_reg <= n_dout_reg;
             ack <= n_ack;
             done <= n_done;
         end
@@ -76,7 +76,7 @@ module i2c_master(
         n_ready = ready;
         n_cmd_reg = cmd_reg;
         n_din_reg = din_reg;
-        n_rx_reg = rx_reg;
+        n_dout_reg = dout_reg;
         n_d_count = d_count;
         n_ack = ack;
         n_done = done;
@@ -166,7 +166,7 @@ module i2c_master(
             DATA3: begin
                 n_sda_drive_h = sda_drive_h;
                 if (cmd_reg == RD_CMD && !count)
-                    n_rx_reg = {rx_reg[6:0], sda};
+                    n_dout_reg = {dout_reg[6:0], sda};
                 else if (cmd_reg == WR_CMD && d_count >= 8) begin
                     n_ack = sda;
                 end
@@ -212,7 +212,7 @@ module i2c_master(
                 end
             end
 
-            RESTART: begin
+            RESTART: begin         
                 if (count < ((i_clk_dvsr >> 1) - 1)) begin
                     n_count = count + 1;
                 end
@@ -223,7 +223,7 @@ module i2c_master(
             end
 
             STOP1: begin
-                n_scl_drive_h = 0;
+                n_sda_drive_h = 0;
                 if (count < ((i_clk_dvsr >> 1) - 1)) begin
                     n_count = count + 1;
                 end
@@ -246,6 +246,7 @@ module i2c_master(
         endcase
     end 
 
+    assign dout = dout_reg;
     assign o_ack = ack;
     assign o_ready = ready;
     assign o_done = done;
